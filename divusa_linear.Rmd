@@ -1,0 +1,146 @@
+---
+title: "divusa-lr"
+output: html_document
+date: "2024-01-28"
+---
+
+# Using the divorce data (divusa), fit a regression model with divorce as the response and unemployed, femlab, marriage, birth and military as predictors. 
+```{r}
+divusa<-read.csv("divusa.csv",header=TRUE)
+divusa<- divusa[,-1] #index column is removed
+attach(divusa)
+head(divusa) # First 6 observations
+
+```
+
+The types of variables are integer and numeric.
+
+```{r}
+str(divusa)
+```
+
+There are 77 rows and 7 variables in the data set.
+
+```{r}
+dim(divusa)
+```
+
+The descriptive statistics are given below. The minimum value of divorce is 6.10 and the maximum value of it is 22.80. The first quartile of divorce is 8.70 and third quartile is 20.30.
+
+```{r}
+summary(divusa) # Descriptive statistics
+```
+
+The data is reshaped to show boxplot of all variables.There are three outliers for military variable and there is only one outlier for marriage variable and unemployed variable has a lot of outliers in the dataset.
+
+```{r}
+library("reshape2")
+divusa1<- divusa[,-1]#removed year variable when constructing the boxplot
+reshaped_divusa<- melt(divusa1) # Reshaping data frame
+boxplot1<-ggplot(reshaped_divusa, aes(x = variable, y = value)) + geom_boxplot(color="darkgreen", fill="lightblue", alpha=0.2)+ggtitle("The Boxplot of Variables")+xlab("Variables")+ylab("Value")+ theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14)) + 
+  theme(legend.text=element_text(size=12)) +theme(plot.title = element_text(size = 16, face = "bold"))
+boxplot1
+```
+In this part, the density graphs of variables are shown. 
+```{r}
+library(grid)
+library(ggridges)
+
+d1 <- density(divusa$divorce)
+d2<- density(divusa$unemployed)
+d3<- density(divusa$femlab)
+d4<- density(divusa$marriage)
+d5<- density(divusa$birth)
+d6<- density(divusa$military)
+
+par(mfrow=c(3,2))
+d1.1<- plot(d1,main="Kernel Density of Divorce")
+d2.1<- plot(d2,main="Kernel Density of Unemployed")
+d3.1<- plot(d3,main="Kernel Density of Femlab")
+d4.1<- plot(d4,main="Kernel Density of Marriage")
+d5.1<- plot(d4,main="Kernel Density of Birth")
+d6.1<- plot(d4,main="Kernel Density of Military")
+
+```
+According to the density of plots, it can be said that divorce, birth, military and marriage distribution appears to be bimodel with the main two peaks. The density plot of unemployed is right skewed, which means the mode is grater than median and also median is grater than mean. Also, the descriptive statistics prove this situation.
+
+### a. Compute the VIFs. Is there evidence that collinearity causes some predictors not to be significant? Explain.
+
+The collinearity can be checked by using two way. The first simple method is to plot the correlation matrix. It enables us to understand the strength and way of correlation between variables.
+
+
+1. Correlation Matrix
+```{r}
+library(ggcorrplot)
+options(repr.plot.width=10, repr.plot.height=7) 
+nums <- select_if(divusa, is.numeric)
+corr <- round(cor(nums), 2) # the correlation between variables
+corr
+```
+
+According to the Pearson correlation coefficent (r), if it is equal to 0, there is no correlation between two variables. If the r is between 0 and 0.3, there is weak realtionship between two variables. If r is between 0.3 and 0.5, the strength of correlation is medium and if it is higher than 0.7, there is strong correlation between two variables.
+
+```{r}
+
+ggcorrplot(corr, 
+           type = "lower", 
+           lab = TRUE, 
+           lab_size = 3, 
+           method="square", 
+           colors = c("tomato2", "white", "#01A9DB"), 
+           ggtheme=theme_minimal())
+```
+According to the heatmap, the dark blue boxes also show the very strong positive relationship.The negative correlation is shown as red. Divorce, which is dependent variable, has a very strong relationship with year and femlab. Also, year has a strong positive relationship with femlab. Marriage and birth positive relationship.
+
+2. Variance Inflation Factor
+
+```{r}
+divorce<- lm(divorce~.,data=divusa)
+summary(divorce)
+```
+
+The summary of full model shows that the year, femlab,marriage, birth and military predictor variables are statistically significant because their p-values lower than 0.05. On the other hand, unemployed variable is not statistically significant because its p-value (0.362171) is greater than the usual significance level of 0.05.
+
+
+VIF indicates the factor that correlations between predictors inflate the variance
+
+```{r}
+car::vif(divorce) 
+```
+
+According to the VIF, the highest value belongs to the year and marriage follows it. The correlation matrix shows that there is strong positive relationship between year and femlab, also marriage and birth have relationship. This situation effected the significance of unemployed variable in the model.
+
+### b. Does the removal of insignificant predictors from the model reduce the collinearity?
+Investigate.
+
+We start to remove unemployed since it is the insignificant predictor from the full model although the femlab has the highest VIF value. 
+
+```{r}
+divorce2<-lm(divorce~ year + femlab + marriage +birth + military,data= divusa)
+summary(divorce2)
+```
+
+After removing the unemployed, the all variables in the fitted model are significant. Now, we check the multicollinearity using vif value. 
+
+
+```{r}
+car::vif(divorce2) 
+```
+
+Although we remove the insignificant predictor, the model still suffer from multicollinearity. 
+
+### c. Analyze the residuals: Check for normality assumption, constant variance 
+assumption, and serial correlation. 
+
+```{r}
+par(mfrow = c(2, 2))
+plot(divorce2)
+```
+
+```{r}
+acf(resid(divorce2))
+```
+
+The residual plots shows that they do not follow the normal distribution because the some points deviates from the theoretical normality line. Scale location plot does not show a certain pattern so we cannot talk about the existence of non consant variance problem. However, the acf of residuals give us some clues about the autocorrelation problem. 
+

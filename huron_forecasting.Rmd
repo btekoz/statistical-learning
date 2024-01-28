@@ -1,0 +1,95 @@
+---
+title: "huron forecasting"
+output: html_document
+date: "2024-01-28"
+---
+ 
+## Data set huron gives the water level of Lake Huron in feet from 1875 to 1972.
+
+
+```{r}
+huron<- read.csv("huron.csv",header=TRUE)
+attach(huron)
+```
+The water level of Lake Huron in feet from 1875 to 1972. The data set was converted time series format.
+
+### a. Plot the data and comment on its features.
+
+```{r}
+huron_ts <- ts(huron$x, frequency=1, start = c(1875, 01), end = c(1972, 01))
+plot(huron_ts, xlab='Time',ylab='The Level of Wate in Lake Huron',main='The Water Level in Lake Huron from 1875 to 1972',col="red") # the plot
+```
+According to the plot, there are a lot of fluctuations. The water level of Lake Huron has downward trend until 1930. This level started to increase until 1950. However, there is sharp decrease around 1960. Finally, it can be said that this level has been increasing since 1960. 
+
+Descriptive statistics
+```{r}
+summary(huron_ts) 
+```
+The minimum water level is 5.96 and the maximum water level is 11.86 for the Lake Huron between 1875 and 1972.
+
+
+```{r}
+head(huron_ts) # first 6 observations
+```
+
+
+```{r}
+tail(huron_ts) # last 6 observations
+```
+
+### b. Fit a linear regression and compare this to a piecewise linear trend model with a knot at 1915 (i.e. broken stick regression).
+
+
+The data frame was created by using data.frame function. The first column was converted as time series and the second column was constructed as numerical value.
+```{r}
+huron_ts_df <- data.frame(level = huron_ts, as.numeric(time(huron_ts)))
+names(huron_ts_df) <- c("level", "time")
+```
+
+In this part, tslm function was utilized to create a model. The model covers the trend and random. There is not seasonal pattern.
+
+Fitting linear regression
+
+```{r}
+linear_huron <- tslm(level~trend,huron_ts_df)
+summary(linear_huron)
+```
+
+The modeled R square is 0.2725, the Adjusted R-squared is  0.2649 and the standard error of the regression is  1.13.
+
+The Water level = 10.202037-0.024201*trend
+
+
+Piecewise Linear Trend
+```{r}
+t <- time(huron_ts)
+knot <- 1915
+piece <- ts(pmax(0,t-knot), start=1875)
+piece_huron <- tslm(level ~ t + piece,huron_ts_df)
+summary(piece_huron)
+
+```
+The modeled R square is 1.045, the Adjusted R-squared is  0.3711  and the standard error of the regression is  1.045.
+
+
+### c. Generate forecasts from these two models for the period up to 1980 and comment on these.
+
+According to the plot, it can be said that linear regression model has ascending trending. Tslm model follows the trend
+```{r}
+h=8
+forecasted_linear_huron <- forecast(linear_huron, h=h)
+autoplot(forecasted_linear_huron)
+```
+
+```{r}
+t.new <- t[length(t)] + seq(h)
+piece_new <- piece[length(piece)]+seq(h)
+df <- cbind(t=t.new, piece=piece_new) %>%  as.data.frame()
+forecasted_piece_huron <- forecast(piece_huron, df)
+autoplot(forecasted_piece_huron)
+
+```
+
+It is observed that the piecewise model shows the trend change while the tslm model follows the trend line. 
+
+Moreover, the adjusted r square of piecewise model is higher than tslm model. It can be said that piecewise model can be give more accurate results.

@@ -1,0 +1,119 @@
+---
+title: "elecdaily"
+output: html_document
+date: "2024-01-28"
+---
+
+  
+# Predictive Analytics 
+  
+  
+```{r}
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(forecast)
+```
+
+## 1. Daily electricity demand for Victoria, Australia, during 2014 is contained in elecdaily. 
+
+```{r}
+elect<- read.csv("elecdaily.csv",header=TRUE)
+```
+
+There are 365 observations and 3 variables in the dataset.
+```{r}
+dim(elect) #The dimension of data
+head(elect) # First six observations
+```
+
+
+```{r}
+elect<- elect[,c(1,3)] #removing work day
+elect_daily <- ts(elect, frequency=365, start = c(2014, 01))
+head(elect_daily)
+```
+
+
+```{r}
+summary(elect_daily) # Descriptive statistics
+```
+
+Demand is between 166 and 348 and temperature is also between 9.80 and 43.20.
+
+### a. Plot the data and find the regression model for Demand with temperature as an explanatory variable. Why is there a positive relationship?
+```{r}
+autoplot(elect_daily)+ylab("Daily electricity") + theme_light()+ggtitle("Time Dependent Graph of Demand and Temperature Variables")
+```
+
+
+```{r}
+elect_model<-tslm(Demand ~ Temperature, data = elect_daily)
+summary(elect_model) 
+```
+According to the summary of model, there is positive relationship between temperature and demand.Because the temperature results in more consumption in terms of electricity.  
+
+### b. Produce a residual plot. Is the model adequate? Are there any outliers or influential 
+observations?
+  
+```{r}
+checkresiduals(elect_model$residuals)
+```
+According to the residual plot, it can be said that there is no correlation between the residuals.Outlier is seen.
+
+### c. Use the model to forecast the electricity demand that you would expect for the next day if the maximum temperature was 15∘ and compare it with the forecast if the with maximum temperature was 35∘. Do you believe these forecasts?
+
+The forecasting results seems reasonable as the predictions are not too out of the data range.
+```{r}
+case1<-forecast(elect_model,newdata=data.frame(Temperature=15))
+case1
+```
+The forecast value of the demand value at a temperature of 15 degrees in the 95 percent confidence interval is a minimum of 166.30 and a maximum of 271.0146.
+```{r}
+case2<-forecast(elect_model,newdata=data.frame(Temperature=35))
+case2
+```
+The forecast value of the demand value at a temperature of 35 degrees in the 95 percent confidence interval is a minimum of 174.3866	 and a maximum of 279.6617.
+
+### d. Give prediction intervals for your forecasts.
+```{r}
+int_for1_80<-c(case1$lower[1],case1$upper[1])#80% interval 
+int_for1_95<-c(case1$lower[2],case1$upper[2])#95% interval
+int_for2_80<-c(case2$lower[1],case2$upper[1])#80% interval 
+int_for2_95<-c(case2$lower[2],case2$upper[2])#95% interval
+```
+
+
+```{r}
+int_for1_80
+```
+
+The true demand value is between 184.48 and 252.84 with probability 0.8 when temperature is 15 according to the model.
+
+```{r}
+int_for1_95
+```
+The true demand value is between 166.3 and 271.01 with probability 0.95 when temperature is 15 according to the model.
+
+
+```{r}
+int_for2_80
+```
+
+The true demand value is between 192.66 and 261.39 with probability 0.8 when temperature is 35 according to the model.
+
+```{r}
+int_for2_95
+```
+The true demand value is between 174.39 and 279.66 with probability 0.95 when temperature is 35 according to the model.
+
+
+### e. Plot Demand vs Temperature for all of the available data in elecdaily. What does this 
+say about your model?
+  
+  In the graph below, it is observed that demand has a positive relationship with temperature. It can be said that as the temperature increases, the electricity demand will increase, and as the temperature decreases, the electricity demand will decrease. This may be due to the air conditioners used. It can be also said that the model can not covers all observations.Especially when the temperature is very low.
+
+```{r}
+
+ggplot(elect,aes(x=Temperature,y=Demand))+geom_point()+geom_smooth(method = "lm") + labs(title ="Electrical Demand vs. Temperature" )
+```
